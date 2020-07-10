@@ -39,7 +39,7 @@ best trial: {self.best_trial}
 		return [self.lib.array([f(x_i) for x_i, f in itertools.product(x, self.function_basis[k])]).reshape(
 			(-1, len(self.function_basis[k]))) for k in range(self.K)]
 
-	def fit(self, x, y, max_iterations=100, verbose=0, print_interval=2, trials=1, eps=1e-3, weights=None):
+	def fit(self, x, y, max_iterations=100, verbose=0, print_interval=2, trials=1, eps=1e-3, weights=None, solver='ridge'):
 		"""
 		:param x:
 		:param y:
@@ -65,7 +65,7 @@ best trial: {self.best_trial}
 
 		coeff = None
 		for t in range(trials):
-			cur_loss, cur_coeff = self.run_trial(x, X, y, verbose_print, max_iterations, eps, t, W)
+			cur_loss, cur_coeff = self.run_trial(x, X, y, verbose_print, max_iterations, eps, t, W, solver)
 			if cur_loss < self.loss:
 				coeff = cur_coeff
 				self.best_trial = t
@@ -75,7 +75,7 @@ best trial: {self.best_trial}
 
 		return cur_loss, cur_coeff
 
-	def run_trial(self, x, X, y, verbose_print, max_iterations, eps, trial_num, W):
+	def run_trial(self, x, X, y, verbose_print, max_iterations, eps, trial_num, W, solver):
 		coeff = self.step1()
 		loss = float('inf')
 
@@ -87,13 +87,17 @@ best trial: {self.best_trial}
 				break
 
 			loss = new_loss
-			coeff = [self.LinReg_KHM(d=d, k=k, X=X[k], y=y, p=self.p, W=W) for k in range(self.K)]
-
+			if solver == 'linear':
+				coeff = [self.LinReg_KHM(d=d, k=k, X=X[k], y=y, p=self.p, W=W) for k in range(self.K)]
+			elif solver == 'ridge':
+				coeff = [self.LinReg_ridge_KHM(d=d, k=k, X=X[k], y=y, p=self.p, W=W) for k in range(self.K)]
+			else:
+				raise NotImplementedError(f'Solver {solver} not implemented')
 			# k_loss = self.calc_kmeans_loss(x, y, coeff, d, W)
 			# a_values = self.a_values(d, self.p)
 			# p_values = self.p_values(d, self.p)
 
-		coeff = [self.final(d, k, X[k], y, self.p, W) for k in range(self.K)]
+		# coeff = [self.final(d, k, X[k], y, self.p, W) for k in range(self.K)]
 		d = self.step2(x, y, coeff)
 		new_loss = self.calc_loss(d, W)
 		verbose_print(iteration=max_iterations - 1, loss=new_loss, trial=trial_num)
@@ -108,8 +112,24 @@ best trial: {self.best_trial}
 			v = vh.T
 			return v[:, -1]
 		else:
-			return self.lib.linalg.inv(X.T @ W @ X) @ X.T @ W.T @ (y.reshape(-1, 1))
-			# return self.lib.linalg.inv(X.T @ W @ (X / denominator)) @ X.T @ W.T @ (y.reshape(-1, 1) / denominator)
+			try:
+				return self.lib.linalg.inv(X.T @ W @ X) @ X.T @ W.T @ (y.reshape(-1, 1))
+			except self.lib.linalg.LinAlgError as e:
+				return self.lib.random.randn(len(self.function_basis[k])).reshape((-1, 1))
+
+	def LinReg_ridge_KHM(self, d, k, X, y, p, W, q=2, lambda_=1e-2):
+		denominator = (((d[:, k]) ** (p + q)) * (1 / (d ** p)).sum(axis=1) ** 2).reshape(-1, 1)
+		W = self.lib.sqrt(W) / denominator
+		if all(y == 0):
+			_, s, vh = self.lib.linalg.svd(W @ X / denominator, full_matrices=True)
+			v = vh.T
+			return v[:, -1]
+		else:
+			try:
+				X_T_W = X.T @ W
+				return self.lib.linalg.inv(X_T_W @ X + lambda_ * np.eye(X.shape[1])) @ X_T_W @ (y.reshape(-1, 1))
+			except self.lib.linalg.LinAlgError as e:
+				return self.lib.random.randn(len(self.function_basis[k])).reshape((-1, 1))
 
 	def final(self, d, k, X, y, p, W, q=2):
 		relevant_idx, = self.lib.where(d.argmin(axis=1) == k)
@@ -146,7 +166,7 @@ best trial: {self.best_trial}
 		res = self.lib.array(res)
 		return (res @ coeff[k].reshape(-1, 1)).flatten()
 
-	def step2(self, x, y, coeff):
+	def step2(self, x, y, coeff=None):
 		d = self.lib.vstack([self.lib.abs(self.calc_kth_function(k=k, x=x, coeff=coeff) - y) for k in range(self.K)]).T
 		return d
 
@@ -171,3 +191,23 @@ best trial: {self.best_trial}
 
 		print(loss)
 		return loss
+
+	def get_best_functions(self, x, y, w):
+		"""
+		Finds the best among the k functions that fit the given data
+		"""
+		d = self.step2(x, y)
+		pos = d.argmin(axis=1)
+		losses = np.zeros(self.K)
+		counts = np.zeros(self.K)
+		for k in range(self.K):
+			r_x = x[np.where(pos == k)]
+			r_y = y[np.where(pos == k)]
+			r_w = w[np.where(pos == k)]
+			W = np.diag(r_w)
+
+			losses[k] = (self.lib.array(self.lib.abs(self.calc_kth_function(k, r_x) - r_y)) @ W).mean()
+			counts[k] = r_x.size
+
+		return losses, counts
+
