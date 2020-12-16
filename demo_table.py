@@ -1,8 +1,12 @@
+import warnings
+
 from scipy.ndimage import binary_opening, binary_dilation, binary_erosion
 from scipy.ndimage.filters import *
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import mixture
+from sklearn.exceptions import ConvergenceWarning
+
 from KHM import KHM
 import pandas as pd
 
@@ -26,17 +30,23 @@ def binarize(data):
 
 def binarize_grad(grad):
 	model = mixture.GaussianMixture(n_components=2)
-	model.fit(grad.flatten().reshape(-1, 1))
+	with warnings.catch_warnings():
+		warnings.filterwarnings('error')
+		try:
+			model.fit(grad.flatten().reshape(-1, 1))
+		except ConvergenceWarning as e:
+			print(e)
+			exit()
 	preds = model.predict(grad.flatten().reshape(-1, 1))
 	low_ = np.argmin(model.means_)
 
 	preds = (preds != low_).astype(np.int)
 
-	# plt.figure()
-	# for c in range(len(np.unique(preds))):
-	# 	idx, = np.where(preds == c)
-	# 	plt.scatter(grad_ga.flatten()[idx], [0]*len(idx))
-	# plt.show()
+	plt.figure()
+	for c in range(len(np.unique(preds))):
+		idx, = np.where(preds == c)
+		plt.scatter(grad.flatten()[idx], [0]*len(idx))
+	plt.show()
 
 	grad_ga_binary = preds.reshape(grad.shape)
 	return grad_ga_binary
@@ -55,18 +65,21 @@ def make_grid(df):
 
 def prepare_data(df):
 	grid = make_grid(df)
-
+	plt.matshow(grid, interpolation='nearest', origin='lower')
+	plt.show()
 	grid = gaussian_filter(grid, sigma=3)
 
-	grid_bin = binarize(grid)
+	# grid_bin = binarize(grid)
 
-	grad = np.linalg.norm(np.stack(np.gradient(grid_bin)), ord=2, axis=0)
+	grad = np.linalg.norm(np.stack(np.gradient(grid)), ord=2, axis=0)
 
-	plt.figure()
 	plt.matshow(grad, interpolation='nearest', origin='lower')
 	plt.show()
 
 	grad = binarize_grad(grad)
+
+	plt.matshow(grad, interpolation='nearest', origin='lower')
+	plt.show()
 
 	idxs = np.array([col.tolist() for col in np.where(grad == grad)])
 	x = idxs[1:, :].T
@@ -82,8 +95,9 @@ def prepare_data(df):
 
 def get_coeff(df, bases, plot=False):
 	x, y, weights, data, grad = prepare_data(df)
+
 	model = KHM(function_basis=bases)
-	cur_loss, cur_coeff = model.fit(x=x, y=y, max_iterations=100, trials=20, verbose=2, weights=weights, eps=1e-4)
+	cur_loss, cur_coeff = model.fit(x=x, y=y, max_iterations=100, trials=20, verbose='end', weights=weights, eps=1e-4)
 	print(repr(model))
 	if plot:
 		fig = plt.figure()
@@ -140,7 +154,9 @@ def get_coeff_trials(df, base, num_trials):
 
 
 if __name__ == '__main__':
-	df = pd.read_csv(r'C:\Users\eitan\Desktop\exps1\0_1_9\seq_len_20_P[E0.2 ! E0.1].csv')
+	df = pd.read_csv(r'C:\Users\eitan\Desktop\exps3\3_4_5_6_15\seq_len_20_P[E3.2 ! E4.1].csv')
+	relevant_data = df.apply(lambda row: all([e != -1 for e in row]), axis=1)
+	df = df[relevant_data]
 	base = [lambda x: x[0] ** 2, lambda x: x[0], lambda x: 1]
 
 	losses, coeffs = get_coeff_trials(df=df, base=base, num_trials=10)

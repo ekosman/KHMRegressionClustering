@@ -44,23 +44,25 @@ best trial: {self.best_trial}
 		:param x:
 		:param y:
 		:param num_iterations:
-		:param verbose: 0 - silent
-						1 - one line per iteration
-						2 - print only start and end iterations
+		:param verbose: silent - silent
+						iteration - one line per iteration
+						end - print only start and end iterations
 		:param trials: number of random starts. The algorithm will choose the trial with minimum loss
 		:return:
 		"""
+		if len(x) == 0:
+			raise Exception("KHM detected empty dataset")
 		x = self.lib.array(x)
 		y = self.lib.array(y)
 		W = self.lib.eye(len(y)) if weights is None else self.lib.diag(weights)
 		X = self.create_X(x)
-		if verbose == 0:
+		if verbose == 'silent':
 			verbose_print = lambda **a: None
-		if verbose == 1 or verbose == 2:
+		if verbose == 'iteration' or verbose == 'end':
 			def verbose_print(trial, iteration, loss):
 				if iteration % print_interval == 0 or iteration == 0:
 					print(f"Trial {trial}	:	Iteration {iteration:{len(str(max_iterations))}d} / {max_iterations}		loss : {loss}")
-		if verbose == 2:
+		if verbose == 'end':
 			print_interval = max_iterations - 1
 
 		coeff = None
@@ -164,7 +166,16 @@ best trial: {self.best_trial}
 		for xi in x:
 			res.append(self.lib.array([f(xi) for f in self.function_basis[k]]))
 		res = self.lib.array(res)
-		return (res @ coeff[k].reshape(-1, 1)).flatten()
+		try:
+			return (res @ coeff[k].reshape(-1, 1)).flatten()
+		except ValueError as e:
+			logging.exception(e)
+			logging.info("X:")
+			logging.info(x)
+			logging.info("res:")
+			logging.info(res)
+			logging.info("coeff:")
+			logging.info(coeff[k])
 
 	def step2(self, x, y, coeff=None):
 		d = self.lib.vstack([self.lib.abs(self.calc_kth_function(k=k, x=x, coeff=coeff) - y) for k in range(self.K)]).T
@@ -186,10 +197,13 @@ best trial: {self.best_trial}
 			r_w = w[np.where(pos == k)]
 			W = np.diag(r_w)
 
+			if len(r_x) == 0:
+				continue
+
 			loss_tmp = self.lib.array(self.lib.abs(self.calc_kth_function(k, r_x, coeff) - r_y)) @ W
 			loss += loss_tmp.sum()
 
-		print(loss)
+		# print(loss)
 		return loss
 
 	def get_best_functions(self, x, y, w):
@@ -205,6 +219,11 @@ best trial: {self.best_trial}
 			r_y = y[np.where(pos == k)]
 			r_w = w[np.where(pos == k)]
 			W = np.diag(r_w)
+
+			if len(r_x) == 0:
+				losses[k] = 0
+				counts[k] = 0
+				continue
 
 			losses[k] = (self.lib.array(self.lib.abs(self.calc_kth_function(k, r_x) - r_y)) @ W).mean()
 			counts[k] = r_x.size
