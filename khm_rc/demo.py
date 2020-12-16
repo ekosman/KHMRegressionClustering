@@ -42,4 +42,3 @@ if __name__ == '__main__':
 	plt.plot(x_3, res3)
 	plt.grid()
 	plt.show()
-	i=1
