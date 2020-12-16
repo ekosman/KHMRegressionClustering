@@ -4,7 +4,7 @@
 * Clone this repository
 * `cd .`
 * Install via `pip install -e .`
-## Usage
+## Usage example
 
 ```python
 from khm_rc.KHM import KHM
