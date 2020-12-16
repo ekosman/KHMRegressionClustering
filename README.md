@@ -56,7 +56,7 @@ plt.plot(x_3, res3)
 plt.grid()
 plt.show()
 ```
-<img src=figures/Figure_1.png width="600"/>
+<img src=figures/results.png width="600"/>
 
 ## Cite this repository
 
