@@ -39,7 +39,7 @@ best trial: {self.best_trial}
 		return [self.lib.array([f(x_i) for x_i, f in itertools.product(x, self.function_basis[k])]).reshape(
 			(-1, len(self.function_basis[k]))) for k in range(self.K)]
 
-	def fit(self, x, y, max_iterations=100, verbose=0, print_interval=2, trials=1, eps=1e-3, weights=None, solver='ridge'):
+	def fit(self, x, y, max_iterations=100, verbose='iteration', print_interval=2, trials=1, eps=1e-3, weights=None, solver='ridge'):
 		"""
 		:param x:
 		:param y:
@@ -95,11 +95,7 @@ best trial: {self.best_trial}
 				coeff = [self.LinReg_ridge_KHM(d=d, k=k, X=X[k], y=y, p=self.p, W=W) for k in range(self.K)]
 			else:
 				raise NotImplementedError(f'Solver {solver} not implemented')
-			# k_loss = self.calc_kmeans_loss(x, y, coeff, d, W)
-			# a_values = self.a_values(d, self.p)
-			# p_values = self.p_values(d, self.p)
 
-		# coeff = [self.final(d, k, X[k], y, self.p, W) for k in range(self.K)]
 		d = self.step2(x, y, coeff)
 		new_loss = self.calc_loss(d, W)
 		verbose_print(iteration=max_iterations - 1, loss=new_loss, trial=trial_num)
@@ -203,7 +199,6 @@ best trial: {self.best_trial}
 			loss_tmp = self.lib.array(self.lib.abs(self.calc_kth_function(k, r_x, coeff) - r_y)) @ W
 			loss += loss_tmp.sum()
 
-		# print(loss)
 		return loss
 
 	def get_best_functions(self, x, y, w):

@@ -8,9 +8,9 @@ if __name__ == '__main__':
 	coeff1 = [0.2, -0.5, 5]
 	coeff2 = [-0.2, -10, -5]
 	coeff3 = [0, 4, 0]
-	basis1 = [lambda x: x[0]**2, lambda x: x[0], lambda x: 1, lambda x: x[1]]
-	basis2 = [lambda x: x[0]**2, lambda x: x[0], lambda x: 1, lambda x: x[1]]
-	basis3 = [lambda x: x[0]**2, lambda x: x[0], lambda x: 1, lambda x: x[1]]
+	basis1 = [lambda x: x[0]**2, lambda x: x[0], lambda x: 1]
+	basis2 = [lambda x: x[0]**2, lambda x: x[0], lambda x: 1]
+	basis3 = [lambda x: x[0]**2, lambda x: x[0], lambda x: 1]
 
 	x1 = np.linspace(-50, 50, 100).reshape(-1, 1)
 	x2 = np.linspace(-50, 50, 100).reshape(-1, 1)
@@ -22,17 +22,16 @@ if __name__ == '__main__':
 	x = np.concatenate([x1, x2, x3])
 	y = np.concatenate([y1, y2, y3])
 
-	x = np.hstack([x, y])
 	model = KHM(function_basis=[basis1, basis2, basis3])
-	model.fit(x=x, y=y, max_iterations=10, trials=10, verbose=1)
+	model.fit(x=x, y=y, max_iterations=10, trials=10, verbose='iteration')
 	print(repr(model))
 
 	x_1 = np.linspace(-80, 80, 100).reshape(-1, 1)
 	x_2 = np.linspace(-80, 80, 100).reshape(-1, 1)
 	x_3 = np.linspace(-80, 80, 100).reshape(-1, 1)
-	res1 = np.array([model.calc_kth_function(k=0, x=x_i) for x_i in x_1])
-	res2 = np.array([model.calc_kth_function(k=1, x=x_i) for x_i in x_2])
-	res3 = np.array([model.calc_kth_function(k=2, x=x_i) for x_i in x_3])
+	res1 = model.calc_kth_function(k=0, x=x_1)
+	res2 = model.calc_kth_function(k=1, x=x_2)
+	res3 = model.calc_kth_function(k=2, x=x_3)
 
 	plt.figure()
 	plt.scatter(x1, y1, label='f1', s=15)

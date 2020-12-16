@@ -29,7 +29,7 @@ if __name__ == '__main__':
 	weights = [1] * (len(y1) + len(y2)) + [0.2] * len(yn)
 
 	model = KHM(function_basis=[basis1, basis2])
-	model.fit(x=x, y=y, max_iterations=50, trials=5, verbose=1, eps=1e-3, print_interval=1, weights=weights)
+	model.fit(x=x, y=y, max_iterations=50, trials=5, verbose='iteration', eps=1e-3, print_interval=1, weights=weights)
 	print(repr(model))
 
 	x_1 = np.arange(-50, 50, 4)
