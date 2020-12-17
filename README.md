@@ -1,4 +1,5 @@
 # KHMRegressionClustering 
+Python version of - https://ieeexplore.ieee.org/abstract/document/1250952
 
 ## Installation
 * Clone this repository
