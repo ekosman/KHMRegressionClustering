@@ -1,7 +1,7 @@
+"""This module contains an implementation of KHM clustering regression."""
+
 import itertools
 import logging
-
-import numpy as np
 
 
 class KHM:
