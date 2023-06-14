@@ -79,7 +79,8 @@ best trial: {self.best_trial}
             def verbose_print(trial, iteration, loss):
                 if iteration % print_interval == 0 or iteration == 0:
                     print(
-                        f"Trial {trial}	:	Iteration {iteration:{len(str(max_iterations))}d} / {max_iterations}		loss : {loss}"
+                        f"Trial {trial}	:	Iteration {iteration:{len(str(max_iterations))}d} / {max_iterations}" + 
+                        f"		loss : {loss}"
                     )
 
         if verbose == "end":
